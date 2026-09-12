@@ -175,3 +175,108 @@ func (c *Client) Replay(
 	}
 	return &out, nil
 }
+
+// --- Events ---
+
+// Event is one webhook event and a summary of how its delivery went.
+type Event struct {
+	EventID    string `json:"event_id"`
+	EventType  string `json:"event_type"`
+	EntityType string `json:"entity_type"`
+	EntityID   string `json:"entity_id"`
+	CreatedAt  string `json:"created_at"`
+	Account    string `json:"account"`
+
+	// Attempts is 0 when nothing was configured to receive the event. That
+	// distinction matters: it separates "nobody was listening" from "delivery
+	// was tried and failed", which otherwise look identical from outside.
+	Attempts int `json:"attempts"`
+	Success  int `json:"success"`
+	Failed   int `json:"failed"`
+
+	LastAttemptStatus     *string `json:"last_attempt_status"`
+	LastAttemptHTTPStatus *int    `json:"last_attempt_http_status"`
+	LastAttemptError      *string `json:"last_attempt_error"`
+	LastAttemptAt         *string `json:"last_attempt_at"`
+}
+
+type EventsResponse struct {
+	Items  []Event `json:"items"`
+	Total  int     `json:"total"`
+	Limit  int     `json:"limit"`
+	Offset int     `json:"offset"`
+}
+
+// ListEvents returns a page of recent events, newest first.
+//
+// The server takes only limit and offset, so any filtering by type or outcome
+// happens in the caller. Pages are capped at 100 server-side.
+func (c *Client) ListEvents(
+	ctx context.Context, limit, offset int,
+) (*EventsResponse, error) {
+	if limit < 1 {
+		limit = 50
+	}
+	if limit > 100 {
+		limit = 100
+	}
+	var out EventsResponse
+	path := fmt.Sprintf("/v1/webhooks/events?limit=%d&offset=%d", limit, offset)
+	if err := c.do(ctx, http.MethodGet, path, nil, &out); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+// --- Endpoints ---
+
+type Endpoint struct {
+	EndpointID  string   `json:"endpoint_id"`
+	Name        string   `json:"name"`
+	URL         *string  `json:"url"`
+	Enabled     bool     `json:"enabled"`
+	EventTypes  []string `json:"event_types"`
+	EventSource string   `json:"event_source"`
+	CreatedAt   string   `json:"created_at"`
+}
+
+type endpointsResponse struct {
+	Items []Endpoint `json:"items"`
+}
+
+func (c *Client) ListEndpoints(ctx context.Context) ([]Endpoint, error) {
+	var out endpointsResponse
+	if err := c.do(ctx, http.MethodGet, "/v1/webhooks/endpoints", nil, &out); err != nil {
+		return nil, err
+	}
+	return out.Items, nil
+}
+
+type CreateEndpointRequest struct {
+	Name       string   `json:"name"`
+	URL        string   `json:"url"`
+	EventTypes []string `json:"event_types"`
+}
+
+// CreateEndpointResponse carries the signing secret, which the API returns
+// only on creation.
+type CreateEndpointResponse struct {
+	Endpoint
+	Secret string `json:"secret"`
+}
+
+func (c *Client) CreateEndpoint(
+	ctx context.Context, req CreateEndpointRequest,
+) (*CreateEndpointResponse, error) {
+	var out CreateEndpointResponse
+	if err := c.do(ctx, http.MethodPost, "/v1/webhooks/endpoints", req, &out); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+func (c *Client) DeleteEndpoint(ctx context.Context, endpointID string) error {
+	return c.do(
+		ctx, http.MethodDelete, "/v1/webhooks/endpoints/"+endpointID, nil, nil,
+	)
+}

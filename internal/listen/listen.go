@@ -57,10 +57,24 @@ var (
 	colReset  = "\033[0m"
 )
 
+// Exported so other commands render the same way. They are set once in init(),
+// after the NO_COLOR and terminal checks, so every command agrees on whether
+// output is coloured rather than each deciding for itself.
+var (
+	Green  = ""
+	Red    = ""
+	Yellow = ""
+	Dim    = ""
+	Bold   = ""
+	Reset  = ""
+)
+
 func init() {
 	if os.Getenv("NO_COLOR") != "" || !isTerminal(os.Stdout) {
 		colGreen, colRed, colYellow, colDim, colBold, colReset = "", "", "", "", "", ""
 	}
+	Green, Red, Yellow = colGreen, colRed, colYellow
+	Dim, Bold, Reset = colDim, colBold, colReset
 }
 
 func isTerminal(f *os.File) bool {

@@ -44,7 +44,8 @@ Commands:
   login          Store an API key
   whoami         Show the active environment
   listen         Forward live events to a local port
-  events replay  Redeliver a past event
+  events         List past events and redeliver them
+  endpoints      Manage your webhook destinations
 
 Run "bachs <command> --help" for details on a command.
 `
@@ -75,6 +76,8 @@ func run(args []string) int {
 		return cmdListen(args[1:])
 	case "events":
 		return cmdEvents(args[1:])
+	case "endpoints":
+		return cmdEndpoints(args[1:])
 	default:
 		fmt.Fprintf(os.Stderr, "unknown command %q\n\n%s", args[0], usage)
 		return 2
@@ -194,11 +197,19 @@ func cmdListen(args []string) int {
 
 func cmdEvents(args []string) int {
 	if len(args) == 0 {
-		fmt.Fprintln(os.Stderr, "usage: bachs events replay <event_id>")
+		eventsUsage()
 		return 2
 	}
-	if args[0] != "replay" {
-		fmt.Fprintf(os.Stderr, "unknown subcommand %q — try: bachs events replay\n", args[0])
+	switch args[0] {
+	case "list":
+		return cmdEventsList(args[1:])
+	case "replay-failed":
+		return cmdEventsReplayAll(args[1:])
+	case "replay":
+		// falls through to the single-event replay below
+	default:
+		fmt.Fprintf(os.Stderr, "unknown subcommand %q\n\n", args[0])
+		eventsUsage()
 		return 2
 	}
 
@@ -230,4 +241,23 @@ func cmdEvents(args []string) int {
 		res.EventType, res.EventID, res.AttemptID,
 	)
 	return 0
+}
+
+func cmdEndpoints(args []string) int {
+	if len(args) == 0 {
+		endpointsUsage()
+		return 2
+	}
+	switch args[0] {
+	case "list":
+		return cmdEndpointsList(args[1:])
+	case "create":
+		return cmdEndpointsCreate(args[1:])
+	case "delete":
+		return cmdEndpointsDelete(args[1:])
+	default:
+		fmt.Fprintf(os.Stderr, "unknown subcommand %q\n\n", args[0])
+		endpointsUsage()
+		return 2
+	}
 }
