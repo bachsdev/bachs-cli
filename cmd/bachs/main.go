@@ -65,6 +65,7 @@ func run(args []string) int {
 	switch args[0] {
 	case "-h", "--help", "help":
 		fmt.Print(usage)
+		printResourceGroups()
 		return 0
 	case "-v", "--version", "version":
 		fmt.Printf("bachs %s\n", version)
@@ -82,7 +83,14 @@ func run(args []string) int {
 	case "trigger":
 		return cmdTrigger(args[1:])
 	default:
+		// Anything else may name a generated resource group, e.g.
+		// `bachs products list`. Checked last so a hand-written command of the
+		// same name always wins.
+		if isResourceGroup(args[0]) {
+			return cmdResource(args[0], args[1:])
+		}
 		fmt.Fprintf(os.Stderr, "unknown command %q\n\n%s", args[0], usage)
+		printResourceGroups()
 		return 2
 	}
 }

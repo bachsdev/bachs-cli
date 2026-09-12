@@ -308,3 +308,13 @@ func (c *Client) Trigger(
 	}
 	return &out, nil
 }
+
+// Raw performs an arbitrary request against the API.
+//
+// Used by the generated resource commands, where the path and method come from
+// the OpenAPI spec rather than a hand-written method per endpoint.
+func (c *Client) Raw(
+	ctx context.Context, method, path string, body any, out any,
+) error {
+	return c.do(ctx, method, path, body, out)
+}
