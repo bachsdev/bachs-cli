@@ -7,14 +7,16 @@ third-party account.
 
 ```bash
 # macOS / Linux
-brew install bachsdev/bachs/bachs
+brew tap bachsdev/bachs
+brew install bachs
 
-# Node projects
-npm install -g @bachs/cli
-
-# Anything else
-curl -fsSL https://bachs.io/cli/install.sh | sh
+# Windows
+scoop bucket add bachs https://github.com/bachsdev/scoop-bachs
+scoop install bachs
 ```
+
+Or grab a build for your platform from
+[the releases page](https://github.com/bachsdev/bachs-cli/releases).
 
 A single binary with no runtime dependencies — nothing to install first.
 
