@@ -280,3 +280,31 @@ func (c *Client) DeleteEndpoint(ctx context.Context, endpointID string) error {
 		ctx, http.MethodDelete, "/v1/webhooks/endpoints/"+endpointID, nil, nil,
 	)
 }
+
+// --- Trigger ---
+
+type TriggerRequest struct {
+	EventType string `json:"event_type"`
+}
+
+type TriggerResponse struct {
+	EventID   string `json:"event_id"`
+	EventType string `json:"event_type"`
+	// Destinations is 0 when nothing is configured to receive the event, which
+	// is worth surfacing: the trigger succeeded but nobody heard it.
+	Destinations int `json:"destinations"`
+}
+
+// Trigger emits a sample event so a handler can be exercised without making a
+// real payment. Sandbox only; the server refuses in production.
+func (c *Client) Trigger(
+	ctx context.Context, eventType string,
+) (*TriggerResponse, error) {
+	var out TriggerResponse
+	err := c.do(ctx, http.MethodPost, "/v1/webhooks/listen/trigger",
+		TriggerRequest{EventType: eventType}, &out)
+	if err != nil {
+		return nil, err
+	}
+	return &out, nil
+}

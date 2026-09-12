@@ -46,6 +46,7 @@ Commands:
   listen         Forward live events to a local port
   events         List past events and redeliver them
   endpoints      Manage your webhook destinations
+  trigger        Emit a sample event (sandbox only)
 
 Run "bachs <command> --help" for details on a command.
 `
@@ -78,6 +79,8 @@ func run(args []string) int {
 		return cmdEvents(args[1:])
 	case "endpoints":
 		return cmdEndpoints(args[1:])
+	case "trigger":
+		return cmdTrigger(args[1:])
 	default:
 		fmt.Fprintf(os.Stderr, "unknown command %q\n\n%s", args[0], usage)
 		return 2
