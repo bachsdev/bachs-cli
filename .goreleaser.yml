@@ -49,20 +49,33 @@ archives:
       - README.md
       - LICENSE*
 
-checksums:
+checksum:
   name_template: checksums.txt
 
-brews:
+# Casks, not formulae: `brews` is deprecated because the formulae GoReleaser
+# generated for pre-built binaries were never really formulae — a formula is
+# meant to describe a build from source. A cask is the honest shape for
+# shipping a compiled binary.
+homebrew_casks:
   - name: bachs
-    # Requires a public homebrew-bachs repo with a Formula/ directory.
+    binaries:
+      - bachs
     repository:
       owner: bachsdev
       name: homebrew-bachs
     homepage: https://bachs.io
     description: Forward live Bachs webhook events to your local machine
-    license: MIT
-    test: |
-      assert_match "bachs", shell_output("#{bin}/bachs --version")
+    hooks:
+      post:
+        # The binary is not notarised, so Gatekeeper quarantines anything
+        # downloaded and macOS refuses to run it. Stripping the attribute is
+        # what every unsigned cask does; signing it properly needs an Apple
+        # Developer ID and is worth doing before this reaches many users.
+        install: |
+          if OS.mac?
+            system_command "/usr/bin/xattr",
+                           args: ["-dr", "com.apple.quarantine", "#{staged_path}/bachs"]
+          end
 
 nfpms:
   - id: bachs
@@ -82,14 +95,14 @@ scoops:
     description: Forward live Bachs webhook events to your local machine
     license: MIT
 
-dockers:
-  - image_templates:
-      - ghcr.io/bachsdev/bachs:{{ .Version }}
-      - ghcr.io/bachsdev/bachs:latest
-    dockerfile: Dockerfile
-    build_flag_templates:
-      - --label=org.opencontainers.image.source=https://github.com/bachsdev/bachs-cli
-      - --label=org.opencontainers.image.version={{ .Version }}
+# Docker is deliberately not wired up yet.
+#
+# `dockers` is being phased out for `dockers_v2`, which builds during publish
+# and needs the Dockerfile reworked around $TARGETPLATFORM. That is a real
+# change worth testing on its own rather than bundling into a first release,
+# and a container is the least likely way anyone installs a local-testing CLI.
+# The Dockerfile in this repo still builds by hand:
+#   go build -o bachs ./cmd/bachs && docker build -t bachs .
 
 release:
   # Draft so a human approves the notes before anything is public.
