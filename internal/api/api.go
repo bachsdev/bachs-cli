@@ -318,3 +318,49 @@ func (c *Client) Raw(
 ) error {
 	return c.do(ctx, method, path, body, out)
 }
+
+// --- Device login ---
+
+type DeviceCodeRequest struct {
+	DeviceName string `json:"device_name,omitempty"`
+}
+
+type DeviceCodeResponse struct {
+	DeviceCode      string `json:"device_code"`
+	UserCode        string `json:"user_code"`
+	VerificationURI string `json:"verification_uri"`
+	ExpiresIn       int    `json:"expires_in"`
+	Interval        int    `json:"interval"`
+}
+
+type DeviceTokenResponse struct {
+	Status         string `json:"status"`
+	APIKey         string `json:"api_key"`
+	OrganizationID string `json:"organization_id"`
+}
+
+// RequestDeviceCode starts a login. Unauthenticated: there is no credential yet.
+func RequestDeviceCode(
+	ctx context.Context, baseURL, deviceName string,
+) (*DeviceCodeResponse, error) {
+	c := &Client{cfg: config.Config{BaseURL: baseURL}, http: &http.Client{Timeout: 30 * time.Second}}
+	var out DeviceCodeResponse
+	if err := c.do(ctx, http.MethodPost, "/v1/device/code",
+		DeviceCodeRequest{DeviceName: deviceName}, &out); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+// PollDeviceToken checks whether the login has been approved yet.
+func PollDeviceToken(
+	ctx context.Context, baseURL, deviceCode string,
+) (*DeviceTokenResponse, error) {
+	c := &Client{cfg: config.Config{BaseURL: baseURL}, http: &http.Client{Timeout: 30 * time.Second}}
+	var out DeviceTokenResponse
+	if err := c.do(ctx, http.MethodPost, "/v1/device/token",
+		map[string]string{"device_code": deviceCode}, &out); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}

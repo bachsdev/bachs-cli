@@ -102,12 +102,31 @@ func fail(err error) int {
 
 func cmdLogin(args []string) int {
 	fs := flag.NewFlagSet("login", flag.ExitOnError)
-	apiKey := fs.String("api-key", "", "API key (sk_sandbox_... or sk_live_...)")
+	apiKey := fs.String("api-key", "",
+		"Log in with a key instead of the browser. Puts the key in your shell history.")
+	sandbox := fs.Bool("sandbox", false, "Pair against sandbox rather than production")
+	deviceName := fs.String("device-name", "", "Shown on the approval screen")
 	_ = fs.Parse(args)
 
+	// The browser flow is the default because passing a key on the command
+	// line writes it to shell history and exposes it through
+	// /proc/<pid>/cmdline, where any local user can read it. --api-key stays
+	// for CI and for anyone who cannot open a browser.
 	if *apiKey == "" {
-		fmt.Fprintln(os.Stderr, "error: --api-key is required")
-		return 2
+		base := config.LiveBaseURL
+		if *sandbox {
+			base = config.SandboxBaseURL
+		}
+		if custom := os.Getenv("BACHS_BASE_URL"); custom != "" {
+			base = custom
+		}
+		name := *deviceName
+		if name == "" {
+			if host, err := os.Hostname(); err == nil {
+				name = host
+			}
+		}
+		return deviceLogin(base, name)
 	}
 
 	path, err := config.Save(*apiKey)
@@ -120,6 +139,11 @@ func cmdLogin(args []string) int {
 		env = "sandbox"
 	}
 	fmt.Printf("Saved %s credentials to %s\n", env, path)
+	fmt.Printf(
+		"%sThat key is now in your shell history. `bachs login` with no flags "+
+			"pairs through the browser and avoids that.%s\n",
+		listen.Dim, listen.Reset,
+	)
 	if env == "live" {
 		fmt.Println("Note: this is a live key. `bachs listen` will forward real events.")
 	}
