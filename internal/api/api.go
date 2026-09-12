@@ -1,0 +1,177 @@
+// Package api talks to the Bachs HTTP API.
+//
+// Only the handful of calls the CLI needs. Errors carry the server's own
+// message rather than a bare status code: a bad event name or a key missing
+// webhooks:write is worth reading, and hiding it behind "400" wastes the
+// user's time.
+package api
+
+import (
+	"bytes"
+	"context"
+	"encoding/json"
+	"fmt"
+	"io"
+	"net/http"
+	"time"
+
+	"github.com/bachsdev/bachs-cli/internal/config"
+)
+
+// Version is the CLI version, overridden at build time via -ldflags. Set by
+// main before any request is made, so the user agent is computed per call
+// rather than frozen at init.
+var Version = "dev"
+
+func userAgent() string {
+	return "Bachs-CLI/" + Version
+}
+
+type Client struct {
+	cfg  config.Config
+	http *http.Client
+}
+
+func New(cfg config.Config) *Client {
+	return &Client{
+		cfg:  cfg,
+		http: &http.Client{Timeout: 30 * time.Second},
+	}
+}
+
+// Error is an API error with the server's own detail preserved.
+type Error struct {
+	StatusCode int
+	Detail     string
+	Code       string
+}
+
+func (e *Error) Error() string {
+	if e.Code != "" {
+		return fmt.Sprintf("%s (%s)", e.Detail, e.Code)
+	}
+	return e.Detail
+}
+
+type errorBody struct {
+	Detail    string `json:"detail"`
+	ErrorCode string `json:"error_code"`
+}
+
+func (c *Client) do(
+	ctx context.Context, method, path string, body any, out any,
+) error {
+	var reader io.Reader
+	if body != nil {
+		encoded, err := json.Marshal(body)
+		if err != nil {
+			return err
+		}
+		reader = bytes.NewReader(encoded)
+	}
+
+	req, err := http.NewRequestWithContext(ctx, method, c.cfg.BaseURL+path, reader)
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Authorization", "Bearer "+c.cfg.APIKey)
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("User-Agent", userAgent())
+
+	resp, err := c.http.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	raw, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return err
+	}
+
+	if resp.StatusCode >= 400 {
+		apiErr := &Error{StatusCode: resp.StatusCode}
+		var parsed errorBody
+		if json.Unmarshal(raw, &parsed) == nil && parsed.Detail != "" {
+			apiErr.Detail = parsed.Detail
+			apiErr.Code = parsed.ErrorCode
+		} else {
+			// Not JSON, or JSON without a detail: show what arrived rather
+			// than inventing a message.
+			apiErr.Detail = fmt.Sprintf("HTTP %d: %s", resp.StatusCode, string(raw))
+		}
+		return apiErr
+	}
+
+	if out != nil {
+		return json.Unmarshal(raw, out)
+	}
+	return nil
+}
+
+// --- Listen sessions ---
+
+type CreateSessionRequest struct {
+	DeviceName string   `json:"device_name,omitempty"`
+	ForwardTo  string   `json:"forward_to,omitempty"`
+	Events     []string `json:"events,omitempty"`
+}
+
+type CreateSessionResponse struct {
+	SessionID     string   `json:"session_id"`
+	Token         string   `json:"token"`
+	SigningSecret string   `json:"signing_secret"`
+	WebSocketPath string   `json:"websocket_path"`
+	Events        []string `json:"events"`
+	// How often to cycle the connection. Server-dictated so deploys can
+	// drain sockets without stranding them.
+	ReconnectAfterSeconds int `json:"reconnect_after_seconds"`
+}
+
+func (c *Client) CreateSession(
+	ctx context.Context, req CreateSessionRequest,
+) (*CreateSessionResponse, error) {
+	var out CreateSessionResponse
+	err := c.do(ctx, http.MethodPost, "/v1/webhooks/listen/sessions", req, &out)
+	if err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+// CloseSession releases a session so fanout stops aiming at a socket nobody
+// holds. Best-effort at shutdown — the server's reaper covers the case where
+// this never runs, which is why a failure here is not worth surfacing.
+func (c *Client) CloseSession(ctx context.Context, sessionID string) error {
+	return c.do(
+		ctx, http.MethodDelete,
+		"/v1/webhooks/listen/sessions/"+sessionID, nil, nil,
+	)
+}
+
+// --- Replay ---
+
+type ReplayRequest struct {
+	EventID string `json:"event_id,omitempty"`
+}
+
+type ReplayResponse struct {
+	EventID   string `json:"event_id"`
+	AttemptID string `json:"attempt_id"`
+	AttemptNo int    `json:"attempt_no"`
+	EventType string `json:"event_type"`
+}
+
+func (c *Client) Replay(
+	ctx context.Context, eventID string,
+) (*ReplayResponse, error) {
+	var out ReplayResponse
+	err := c.do(
+		ctx, http.MethodPost, "/v1/webhooks/replay",
+		ReplayRequest{EventID: eventID}, &out,
+	)
+	if err != nil {
+		return nil, err
+	}
+	return &out, nil
+}

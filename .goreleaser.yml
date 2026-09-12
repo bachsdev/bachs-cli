@@ -1,0 +1,105 @@
+# Release pipeline for the bachs CLI.
+#
+# One codebase, every platform and package manager. This is the reason the CLI
+# is Go rather than Python: `pip install` reaches PyPI and nothing else, and
+# requires the user to already have a matching Python. A single static binary
+# reaches Homebrew, apt, yum, Scoop, Docker and a curl script, and needs no
+# runtime at all — which matters because most merchants are not Python shops.
+#
+# Cut a release:
+#   git tag -a v0.1.0 -m "v0.1.0" && git push origin v0.1.0
+#   goreleaser release --clean
+
+version: 2
+
+project_name: bachs
+
+before:
+  hooks:
+    - go mod tidy
+
+builds:
+  - id: bachs
+    main: ./cmd/bachs
+    binary: bachs
+    # CGO off so Linux builds are fully static: no glibc version to match,
+    # which is what makes one binary work on Alpine, Debian and Amazon Linux.
+    env:
+      - CGO_ENABLED=0
+    goos: [darwin, linux, windows]
+    goarch: [amd64, arm64]
+    ignore:
+      # Windows on ARM is not worth shipping until someone asks.
+      - goos: windows
+        goarch: arm64
+    ldflags:
+      # -s -w drops the symbol table and DWARF: ~9.4MB becomes ~6.3MB, and
+      # nothing we support depends on either.
+      - -s -w -X main.version={{.Version}}
+
+archives:
+  - id: bachs
+    formats: [tar.gz]
+    format_overrides:
+      - goos: windows
+        formats: [zip]
+    name_template: >-
+      {{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}
+    files:
+      - README.md
+      - LICENSE*
+
+checksums:
+  name_template: checksums.txt
+
+brews:
+  - name: bachs
+    # Requires a public homebrew-bachs repo with a Formula/ directory.
+    repository:
+      owner: bachsdev
+      name: homebrew-bachs
+    homepage: https://bachs.io
+    description: Forward live Bachs webhook events to your local machine
+    license: MIT
+    test: |
+      assert_match "bachs", shell_output("#{bin}/bachs --version")
+
+nfpms:
+  - id: bachs
+    package_name: bachs
+    homepage: https://bachs.io
+    description: Forward live Bachs webhook events to your local machine
+    maintainer: Bachs <support@bachs.io>
+    license: MIT
+    formats: [deb, rpm]
+    bindir: /usr/bin
+
+scoops:
+  - repository:
+      owner: bachsdev
+      name: scoop-bachs
+    homepage: https://bachs.io
+    description: Forward live Bachs webhook events to your local machine
+    license: MIT
+
+dockers:
+  - image_templates:
+      - ghcr.io/bachsdev/bachs:{{ .Version }}
+      - ghcr.io/bachsdev/bachs:latest
+    dockerfile: Dockerfile
+    build_flag_templates:
+      - --label=org.opencontainers.image.source=https://github.com/bachsdev/bachs-cli
+      - --label=org.opencontainers.image.version={{ .Version }}
+
+release:
+  # Draft so a human approves the notes before anything is public.
+  draft: true
+  prerelease: auto
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+      - "^chore:"

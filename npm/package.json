@@ -1,0 +1,31 @@
+{
+  "name": "@bachs/cli",
+  "version": "0.1.0",
+  "description": "Forward live Bachs webhook events to your local machine",
+  "homepage": "https://docs.bachs.io/developer-portal/local-testing",
+  "license": "MIT",
+  "author": "Bachs <support@bachs.io>",
+  "bin": {
+    "bachs": "bin/bachs.js"
+  },
+  "files": [
+    "bin/bachs.js"
+  ],
+  "keywords": [
+    "bachs",
+    "webhooks",
+    "payments",
+    "cli"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "//": "The CLI is a Go binary. This package is only a launcher: the real executables ship as optional platform-specific dependencies, and npm installs exactly the one matching the host. That is how a compiled CLI reaches Node developers without asking them to install Go — the same approach Stripe uses.",
+  "optionalDependencies": {
+    "@bachs/cli-darwin-arm64": "0.1.0",
+    "@bachs/cli-darwin-x64": "0.1.0",
+    "@bachs/cli-linux-arm64": "0.1.0",
+    "@bachs/cli-linux-x64": "0.1.0",
+    "@bachs/cli-win32-x64": "0.1.0"
+  }
+}

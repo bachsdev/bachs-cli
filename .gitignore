@@ -1,0 +1,6 @@
+dist/
+
+# The built binary, anchored to the repo root. An unanchored `bachs` also
+# matches the cmd/bachs/ source directory, which silently excludes main.go.
+/bachs
+/bachs.exe
