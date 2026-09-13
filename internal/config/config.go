@@ -24,11 +24,14 @@ const (
 )
 
 // ErrNoAPIKey is returned when no credential can be found anywhere.
+//
+// Leads with the browser flow because that is the one that does not put a key
+// in shell history. The env var is listed second for CI, where there is nobody
+// to approve anything.
 var ErrNoAPIKey = errors.New(
-	"no API key found\n" +
-		"  run:  bachs login --api-key sk_sandbox_...\n" +
-		"  or:   export BACHS_API_KEY=sk_sandbox_...\n" +
-		"  or:   bachs <command> --api-key sk_sandbox_...",
+	"not logged in\n" +
+		"  run:  bachs login\n" +
+		"  CI:   export BACHS_API_KEY=sk_sandbox_...",
 )
 
 type Config struct {

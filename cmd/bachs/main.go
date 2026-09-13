@@ -41,7 +41,7 @@ Usage:
   bachs <command> [flags]
 
 Commands:
-  login          Store an API key
+  login          Connect this machine, through your browser
   whoami         Show the active environment
   listen         Forward live events to a local port
   events         List past events and redeliver them
