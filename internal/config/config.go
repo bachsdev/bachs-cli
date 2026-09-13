@@ -142,6 +142,25 @@ func Save(apiKey string) (string, error) {
 	return path, nil
 }
 
+// Clear removes the stored credentials.
+//
+// Reports whether there was anything to remove, so the caller can tell "logged
+// out" from "was not logged in" rather than claiming to have done something it
+// did not. A missing file is not an error: running logout twice should be
+// quiet, not a failure.
+func Clear() (bool, error) {
+	path := Path()
+	err := os.Remove(path)
+	switch {
+	case err == nil:
+		return true, nil
+	case errors.Is(err, os.ErrNotExist):
+		return false, nil
+	default:
+		return false, fmt.Errorf("could not remove %s: %w", path, err)
+	}
+}
+
 // Load resolves credentials in precedence order: an explicit flag, then
 // BACHS_API_KEY, then the config file.
 //

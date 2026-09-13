@@ -281,6 +281,36 @@ func (c *Client) DeleteEndpoint(ctx context.Context, endpointID string) error {
 	)
 }
 
+// --- Listen sessions ---
+
+type Session struct {
+	SessionID  string `json:"session_id"`
+	DeviceName string `json:"device_name"`
+	ForwardTo  string `json:"forward_to"`
+	Status     string `json:"status"`
+	// Live is the truth about whether anything is holding the socket right
+	// now. Status alone can lie, because a killed process never gets to
+	// update it.
+	Live       bool   `json:"live"`
+	LastSeenAt string `json:"last_seen_at"`
+	CreatedAt  string `json:"created_at"`
+}
+
+type sessionsResponse struct {
+	Sessions []Session `json:"sessions"`
+}
+
+// ListSessions returns the forwarding sessions that have not finished.
+func (c *Client) ListSessions(ctx context.Context) ([]Session, error) {
+	var out sessionsResponse
+	if err := c.do(
+		ctx, http.MethodGet, "/v1/webhooks/listen/sessions", nil, &out,
+	); err != nil {
+		return nil, err
+	}
+	return out.Sessions, nil
+}
+
 // --- Trigger ---
 
 type TriggerRequest struct {

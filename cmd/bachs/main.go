@@ -42,8 +42,10 @@ Usage:
 
 Commands:
   login          Connect this machine, through your browser
+  logout         Forget the stored credentials
   whoami         Show the active environment
   listen         Forward live events to a local port
+  sessions       List and close forwarding sessions
   events         List past events and redeliver them
   endpoints      Manage your webhook destinations
   trigger        Emit a sample event (sandbox only)
@@ -72,10 +74,14 @@ func run(args []string) int {
 		return 0
 	case "login":
 		return cmdLogin(args[1:])
+	case "logout":
+		return cmdLogout(args[1:])
 	case "whoami":
 		return cmdWhoami(args[1:])
 	case "listen":
 		return cmdListen(args[1:])
+	case "sessions":
+		return cmdSessions(args[1:])
 	case "events":
 		return cmdEvents(args[1:])
 	case "endpoints":
@@ -146,6 +152,55 @@ func cmdLogin(args []string) int {
 	)
 	if env == "live" {
 		fmt.Println("Note: this is a live key. `bachs listen` will forward real events.")
+	}
+	return 0
+}
+
+// cmdLogout forgets the stored credentials.
+//
+// Removing the file ends this machine's access, but the key itself stays valid
+// until it expires or is revoked, and saying so is the difference between a
+// developer thinking they have secured a shared machine and actually having
+// done it. A paired key expires on its own; one pasted with --api-key does not.
+func cmdLogout(args []string) int {
+	fs := flag.NewFlagSet("logout", flag.ExitOnError)
+	_ = fs.Parse(args)
+
+	removed, err := config.Clear()
+	if err != nil {
+		return fail(err)
+	}
+	if !removed {
+		fmt.Println("Not logged in.")
+		if os.Getenv("BACHS_API_KEY") != "" {
+			fmt.Printf(
+				"%sBACHS_API_KEY is set in this shell and still applies. "+
+					"Unset it to finish logging out.%s\n",
+				listen.Dim, listen.Reset,
+			)
+		}
+		return 0
+	}
+
+	fmt.Printf("%s✓%s Logged out. Removed %s\n",
+		listen.Green, listen.Reset, config.Path())
+
+	// One dashboard host for both environments: sandbox is a switch inside the
+	// app, not a separate deployment.
+	fmt.Printf(
+		"%sThe key stays valid until it expires or you revoke it at "+
+			"https://app.bachs.io/developer/portal%s\n",
+		listen.Dim, listen.Reset,
+	)
+
+	if os.Getenv("BACHS_API_KEY") != "" {
+		// Otherwise the next command still works and it looks like logout did
+		// nothing.
+		fmt.Printf(
+			"%sBACHS_API_KEY is set in this shell and still applies. "+
+				"Unset it to finish logging out.%s\n",
+			listen.Dim, listen.Reset,
+		)
 	}
 	return 0
 }
