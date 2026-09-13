@@ -156,12 +156,27 @@ func printGroupHelp(group string) {
 		return
 	}
 	fmt.Fprintf(os.Stderr, "Usage: bachs %s <operation> [flags]\n\nOperations:\n", group)
-	for _, c := range cmds {
-		args := ""
+
+	// Measure before printing. Fixed widths line up only until a verb like
+	// list-payout-supported-currencies runs past them, and then every summary
+	// below it sits at a different column.
+	args := make([]string, len(cmds))
+	verbWidth, argsWidth := 0, 0
+	for i, c := range cmds {
 		for _, p := range c.PathParams {
-			args += " <" + p + ">"
+			args[i] += " <" + p + ">"
 		}
-		fmt.Fprintf(os.Stderr, "  %-14s%-24s %s\n", c.Verb, args, c.Summary)
+		if n := len(c.Verb); n > verbWidth {
+			verbWidth = n
+		}
+		if n := len(args[i]); n > argsWidth {
+			argsWidth = n
+		}
+	}
+
+	for i, c := range cmds {
+		fmt.Fprintf(os.Stderr, "  %-*s%-*s  %s\n",
+			verbWidth, c.Verb, argsWidth, args[i], c.Summary)
 	}
 }
 
