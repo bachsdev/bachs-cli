@@ -49,8 +49,12 @@ func deviceLogin(baseURL, deviceName string) int {
 	// the code up in whichever environment the dashboard happens to be toggled
 	// to. A sandbox code viewed from a live dashboard is simply not found, and
 	// reads to the developer as expired.
+	//
+	// Deliberately not `env`: the dashboard already owns that parameter for
+	// sandbox deep links, and consumes and deletes it on arrival. Sharing the
+	// name meant this one was stripped before the page could read it.
 	url := fmt.Sprintf(
-		"%s?code=%s&env=%s",
+		"%s?code=%s&cli_env=%s",
 		code.VerificationURI, code.UserCode, environmentFor(baseURL),
 	)
 	fmt.Printf(
