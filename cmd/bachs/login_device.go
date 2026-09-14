@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"runtime"
+	"strings"
 	"time"
 
 	"github.com/bachsdev/bachs-cli/internal/api"
@@ -22,6 +23,19 @@ import (
 //
 // The key it receives is also weaker than one pasted by hand: it can read and
 // it can drive local testing, and it cannot move money.
+// environmentFor names the environment a base URL belongs to.
+//
+// Derived from the URL rather than passed alongside it, so it cannot drift out
+// of step with the API actually being called. Anything not recognisably the
+// sandbox is treated as live: guessing "sandbox" for an unknown host would
+// send someone to look for a live code in the wrong place.
+func environmentFor(baseURL string) string {
+	if strings.Contains(baseURL, "sandbox") {
+		return "sandbox"
+	}
+	return "live"
+}
+
 func deviceLogin(baseURL, deviceName string) int {
 	ctx := context.Background()
 
@@ -30,7 +44,15 @@ func deviceLogin(baseURL, deviceName string) int {
 		return fail(fmt.Errorf("could not start login: %w", err))
 	}
 
-	url := code.VerificationURI + "?code=" + code.UserCode
+	// Name the environment in the link. Sandbox and production keep separate
+	// grant tables but share one approval page, so without this the page looks
+	// the code up in whichever environment the dashboard happens to be toggled
+	// to. A sandbox code viewed from a live dashboard is simply not found, and
+	// reads to the developer as expired.
+	url := fmt.Sprintf(
+		"%s?code=%s&env=%s",
+		code.VerificationURI, code.UserCode, environmentFor(baseURL),
+	)
 	fmt.Printf(
 		"\nYour pairing code is %s%s%s\n\n",
 		listen.Bold, code.UserCode, listen.Reset,
