@@ -18,6 +18,17 @@ before:
   hooks:
     - go mod tidy
 
+# npm is published from the binaries built above, not built separately, and
+# goes out as `latest` like the Homebrew cask and the Scoop manifest.
+#
+# It was the one channel with no step here: published by hand once at v0.1.0,
+# then three releases behind, handing Node developers a build with no
+# `bachs login`. A step only npm needs somebody to remember is how that
+# happened, so there isn't one.
+after:
+  hooks:
+    - ./scripts/publish-npm.sh {{ .Version }}
+
 builds:
   - id: bachs
     main: ./cmd/bachs
