@@ -9,8 +9,9 @@
 #
 # Run from the repo root, after `goreleaser release`, with dist/ still in place:
 #
-#   scripts/publish-npm.sh 0.2.3          # publish as `latest`
-#   scripts/publish-npm.sh 0.2.3 --next   # publish as `next`, leave `latest`
+#   scripts/publish-npm.sh 0.2.3            # publish as `latest`
+#   scripts/publish-npm.sh 0.2.3 --next     # publish as `next`, leave `latest`
+#   NPM_OTP=123456 scripts/publish-npm.sh 0.2.3    # when 2FA prompts
 #
 # `latest` by default, because Homebrew and Scoop are updated the moment a
 # release is cut and npm should not be the one channel that needs somebody to
@@ -64,6 +65,13 @@ publish() {
   # --access public because the scope is private by default, and a first
   # publish without it fails. Harmless on later ones.
   local args=(publish --access public)
+  # Six publishes behind 2FA need a code that outlives all six, and a
+  # one-time password does not reliably do that. Set NPM_OTP for a manual run
+  # if you must; a release running unattended needs an automation token in
+  # .npmrc, which skips the prompt entirely.
+  if [[ -n "${NPM_OTP:-}" ]]; then
+    args+=(--otp "$NPM_OTP")
+  fi
   if [[ "$MODE" == "--next" ]]; then
     args+=(--tag next)
   else
