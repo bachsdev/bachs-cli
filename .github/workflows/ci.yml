@@ -22,3 +22,10 @@ jobs:
       # The release publishes six npm packages by running this. A typo in it
       # surfaces at release time otherwise, half way through publishing.
       - run: bash -n scripts/publish-npm.sh
+
+      # Catches a config error before a tag does. A Pro-only field parses
+      # nowhere and fails the release at second zero, with the tag spent.
+      - uses: goreleaser/goreleaser-action@v6
+        with:
+          version: latest
+          args: check
