@@ -29,7 +29,10 @@ before:
 # happened, so there isn't one.
 after:
   hooks:
-    - ./scripts/publish-npm.sh {{ .Version }}
+    # A prerelease goes out under npm's `next` tag, so `npm install` still
+    # gets the last real version. That makes an -rc tag a safe rehearsal of
+    # the whole release.
+    - ./scripts/publish-npm.sh {{ .Version }} {{ if .Prerelease }}--next{{ end }}
 
 builds:
   - id: bachs
@@ -70,7 +73,10 @@ checksum:
 # meant to describe a build from source. A cask is the honest shape for
 # shipping a compiled binary.
 homebrew_casks:
-  - name: bachs
+    # auto = skip on a prerelease. Homebrew has no way to offer an rc only to
+    # people who asked for one, so without this an -rc tag ships to everybody.
+  - skip_upload: auto
+    name: bachs
     binaries:
       - bachs
     repository:
@@ -101,7 +107,8 @@ nfpms:
     bindir: /usr/bin
 
 scoops:
-  - repository:
+  - skip_upload: auto
+    repository:
       owner: bachsdev
       name: scoop-bachs
     homepage: https://bachs.io
