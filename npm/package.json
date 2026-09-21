@@ -3,6 +3,10 @@
   "version": "0.1.0",
   "description": "Forward live Bachs webhook events to your local machine",
   "homepage": "https://docs.bachs.io/developer-portal/local-testing",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/bachsdev/bachs-cli.git"
+  },
   "license": "MIT",
   "author": "Bachs <support@bachs.io>",
   "bin": {
