@@ -6,9 +6,11 @@
 # reaches Homebrew, apt, yum, Scoop, Docker and a curl script, and needs no
 # runtime at all — which matters because most merchants are not Python shops.
 #
-# Cut a release:
+# Cut a release by pushing a tag. The release workflow runs goreleaser from
+# there — not from a laptop, because npm will only hand a publish credential to
+# a workflow. See .github/workflows/release.yml.
+#
 #   git tag -a v0.1.0 -m "v0.1.0" && git push origin v0.1.0
-#   goreleaser release --clean
 
 version: 2
 
@@ -17,6 +19,20 @@ project_name: bachs
 before:
   hooks:
     - go mod tidy
+
+# npm is published from the binaries built above, not built separately, and
+# goes out as `latest` like the Homebrew cask and the Scoop manifest.
+#
+# It was the one channel with no step here: published by hand once at v0.1.0,
+# then three releases behind, handing Node developers a build with no
+# `bachs login`. A step only npm needs somebody to remember is how that
+# happened, so there isn't one.
+after:
+  hooks:
+    # A prerelease goes out under npm's `next` tag, so `npm install` still
+    # gets the last real version. That makes an -rc tag a safe rehearsal of
+    # the whole release.
+    - ./scripts/publish-npm.sh {{ .Version }} {{ if .Prerelease }}--next{{ end }}
 
 builds:
   - id: bachs
@@ -62,7 +78,10 @@ checksum:
 # is what gets past it, so tell people to run
 # `brew install bachsdev/bachs/bachs` and never a bare `brew install bachs`.
 homebrew_casks:
-  - name: bachs
+    # auto = skip on a prerelease. Homebrew has no way to offer an rc only to
+    # people who asked for one, so without this an -rc tag ships to everybody.
+  - skip_upload: auto
+    name: bachs
     binaries:
       - bachs
     repository:
@@ -96,7 +115,8 @@ nfpms:
     bindir: /usr/bin
 
 scoops:
-  - repository:
+  - skip_upload: auto
+    repository:
       owner: bachsdev
       name: scoop-bachs
     homepage: https://bachs.io
