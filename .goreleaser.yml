@@ -6,9 +6,11 @@
 # reaches Homebrew, apt, yum, Scoop, Docker and a curl script, and needs no
 # runtime at all — which matters because most merchants are not Python shops.
 #
-# Cut a release:
+# Cut a release by pushing a tag. The release workflow runs goreleaser from
+# there — not from a laptop, because npm will only hand a publish credential to
+# a workflow. See .github/workflows/release.yml.
+#
 #   git tag -a v0.1.0 -m "v0.1.0" && git push origin v0.1.0
-#   goreleaser release --clean
 
 version: 2
 
