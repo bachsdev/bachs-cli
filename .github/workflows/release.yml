@@ -43,3 +43,19 @@ jobs:
           # repos, so the token handed to a job by default cannot reach them
           # and this has to be a PAT with write access to all three.
           GITHUB_TOKEN: ${{ secrets.RELEASE_GITHUB_TOKEN }}
+
+      # goreleaser's own after-hooks are a Pro feature, so npm is published
+      # here, from the binaries goreleaser left in dist/.
+      #
+      # A prerelease goes out under npm's `next` tag, so a plain
+      # `npm install` still gets the last real version. That is what makes an
+      # -rc tag a safe rehearsal.
+      - name: Publish to npm
+        shell: bash
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          if [[ "$version" == *-* ]]; then
+            scripts/publish-npm.sh "$version" --next
+          else
+            scripts/publish-npm.sh "$version"
+          fi

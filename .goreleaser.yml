@@ -20,20 +20,6 @@ before:
   hooks:
     - go mod tidy
 
-# npm is published from the binaries built above, not built separately, and
-# goes out as `latest` like the Homebrew cask and the Scoop manifest.
-#
-# It was the one channel with no step here: published by hand once at v0.1.0,
-# then three releases behind, handing Node developers a build with no
-# `bachs login`. A step only npm needs somebody to remember is how that
-# happened, so there isn't one.
-after:
-  hooks:
-    # A prerelease goes out under npm's `next` tag, so `npm install` still
-    # gets the last real version. That makes an -rc tag a safe rehearsal of
-    # the whole release.
-    - ./scripts/publish-npm.sh {{ .Version }} {{ if .Prerelease }}--next{{ end }}
-
 builds:
   - id: bachs
     main: ./cmd/bachs
