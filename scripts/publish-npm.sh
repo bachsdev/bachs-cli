@@ -13,6 +13,10 @@
 #   scripts/publish-npm.sh 0.2.3 --next     # publish as `next`, leave `latest`
 #   NPM_OTP=123456 scripts/publish-npm.sh 0.2.3    # when 2FA prompts
 #
+# In GitHub Actions there is no token and no code to type. npm trusts the
+# release workflow and issues a credential for each publish, which is why the
+# release runs there now. See .github/workflows/release.yml.
+#
 # `latest` by default, because Homebrew and Scoop are updated the moment a
 # release is cut and npm should not be the one channel that needs somebody to
 # remember a second command. That is how it ended up three releases behind.
@@ -50,6 +54,19 @@ if [[ ! -d "$DIST" ]]; then
   exit 1
 fi
 
+# Trusted publishing needs npm 11.5.1 or newer. An older npm does not know to
+# ask for a credential, looks for a token it will not find, and fails on the
+# first of six packages with a message about authentication that sends you
+# hunting for the wrong thing.
+if [[ -n "${GITHUB_ACTIONS:-}" ]]; then
+  npm_version="$(npm --version)"
+  required="11.5.1"
+  if [[ "$(printf '%s\n' "$required" "$npm_version" | sort -V | head -1)" != "$required" ]]; then
+    echo "error: npm $npm_version is too old for trusted publishing (need $required+)." >&2
+    exit 1
+  fi
+fi
+
 # npm's platform names are not Go's. Each row is:
 #   <npm suffix> <goreleaser os> <goreleaser arch> <npm os> <npm cpu>
 PLATFORMS=(
@@ -65,10 +82,9 @@ publish() {
   # --access public because the scope is private by default, and a first
   # publish without it fails. Harmless on later ones.
   local args=(publish --access public)
-  # Six publishes behind 2FA need a code that outlives all six, and a
-  # one-time password does not reliably do that. Set NPM_OTP for a manual run
-  # if you must; a release running unattended needs an automation token in
-  # .npmrc, which skips the prompt entirely.
+  # A code typed by hand covers a run somebody is watching. Six publishes need
+  # six codes, each good for about thirty seconds, so this is for a one-off
+  # only — a release goes through the workflow, where npm asks for nothing.
   if [[ -n "${NPM_OTP:-}" ]]; then
     args+=(--otp "$NPM_OTP")
   fi
