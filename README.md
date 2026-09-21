@@ -7,8 +7,7 @@ third-party account.
 
 ```bash
 # macOS / Linux
-brew tap bachsdev/bachs
-brew install bachs
+brew install bachsdev/bachs/bachs
 
 # Windows
 scoop bucket add bachs https://github.com/bachsdev/scoop-bachs

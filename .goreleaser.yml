@@ -56,6 +56,11 @@ checksum:
 # generated for pre-built binaries were never really formulae — a formula is
 # meant to describe a build from source. A cask is the honest shape for
 # shipping a compiled binary.
+#
+# A cask does mean Homebrew 7 asks people to trust our tap, but a formula would
+# too — the trust gate covers both. Naming the tap in full on the command line
+# is what gets past it, so tell people to run
+# `brew install bachsdev/bachs/bachs` and never a bare `brew install bachs`.
 homebrew_casks:
   - name: bachs
     binaries:
@@ -65,17 +70,20 @@ homebrew_casks:
       name: homebrew-bachs
     homepage: https://bachs.io
     description: Forward live Bachs webhook events to your local machine
-    hooks:
-      post:
-        # The binary is not notarised, so Gatekeeper quarantines anything
-        # downloaded and macOS refuses to run it. Stripping the attribute is
-        # what every unsigned cask does; signing it properly needs an Apple
-        # Developer ID and is worth doing before this reaches many users.
-        install: |
-          if OS.mac?
-            system_command "/usr/bin/xattr",
-                           args: ["-dr", "com.apple.quarantine", "#{staged_path}/bachs"]
-          end
+    # Drops the macOS quarantine flag so the unsigned binary will run. Remove
+    # this once releases are signed and notarised.
+    #
+    # It sits in `custom_block` because GoReleaser's hooks still write the
+    # `postflight` stanza Homebrew 7 deprecated (goreleaser/goreleaser#6870).
+    # `chdir` keeps the path short; spelling it out needs a `{{ }}` token that
+    # GoReleaser would eat.
+    custom_block: |
+      postflight_steps do
+        on_macos do
+          run "/usr/bin/xattr", chdir: ".",
+              args: ["-dr", "com.apple.quarantine", "bachs"]
+        end
+      end
 
 nfpms:
   - id: bachs
