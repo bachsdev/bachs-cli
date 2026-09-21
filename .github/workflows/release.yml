@@ -38,6 +38,13 @@ jobs:
           version: latest
           args: release --clean
         env:
+          # Which tag this release is for. goreleaser otherwise works the
+          # version out from git history, and when two tags sit on the same
+          # commit it can pick the wrong one. That is the normal case here:
+          # rehearse with v0.2.4-rc.1, then release the same commit as v0.2.4.
+          # Without this it built the rc again, treated the release as a
+          # prerelease, and skipped Homebrew and Scoop.
+          GORELEASER_CURRENT_TAG: ${{ github.ref_name }}
           # Writes the release here, and the cask and manifest to
           # bachsdev/homebrew-bachs and bachsdev/scoop-bachs. Those are other
           # repos, so the token handed to a job by default cannot reach them
