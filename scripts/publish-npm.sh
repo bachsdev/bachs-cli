@@ -165,6 +165,12 @@ package["optionalDependencies"] = {
 if not package["optionalDependencies"]:
     sys.exit("error: npm/package.json lists no optionalDependencies")
 
+# Provenance checks this against the workflow that built the package. Missing,
+# it reads as "" and the registry rejects the publish — after the other five
+# have already gone out.
+if not package.get("repository", {}).get("url"):
+    sys.exit("error: npm/package.json has no repository.url")
+
 with open(target, "w") as handle:
     json.dump(package, handle, indent=2, ensure_ascii=False)
     handle.write("\n")
